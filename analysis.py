@@ -4,14 +4,17 @@ import os
 import networkx as nx
 import matplotlib.pyplot as plt
 import io
+from treelib import Tree, Node
 
-PATH_FILE = "./UIPath_139K.txt"
+PATH_FILE = "./UIPath_number.txt"
 GENERATED_PATH = "./generate_path.txt"
 PATH_RESULT_FILE = "./path_analysis_result.txt"
+TEST_DFS = 1
 
 class RawData(object):
     def __init__(self, string = None):
         self.string = string
+
 
     def to_dict(self, string):
         #字符串转字典
@@ -34,9 +37,87 @@ class RawData(object):
         self.time_interval = int(current["timestamps"]) - int(last["timestamps"])
         return self.time_interval < 200 and (current['event'] not in self.no_static_event)
 
+class NodeData(object):
+    def __init__(self, nodeName = '', neighbors=[], nodeDictData={}):
+        self.nodeName = nodeName
+        self.neighbors = neighbors
+        self.nodeDict = nodeDictData
+        self.visited = False
+        visitableNode = len(self.neighbors)
+
+
+
 class Path_generate(object):
     def __init__(self):
         self.Graph_for_show = nx.DiGraph()
+        self.tree = Tree()
+        self.pathVisited = []
+
+    def arlonDFSgeneratePath(self, graph, rootNodeName):
+        """
+        按照深度优先生成路径
+        :param graph:
+        :return:
+        """
+        node_id = 0
+        #current_node = rootNode
+        rootNeighbors = list(graph.neighbors(rootNodeName))
+
+        rootNodeData = NodeData(nodeName=rootNodeName,
+                                neighbors=rootNeighbors,
+                                nodeDictData=graph.node[rootNodeName]['data'])
+        current_node = self.tree.create_node(rootNodeName, node_id, data=rootNodeData)
+        node_id += 1
+        self.pathVisited.append(rootNodeName)
+        while((current_node.tag != rootNodeName) or (self.getNodeNotVisited(current_node) is None)):
+            father_node = current_node
+            newNodeName = self.getNodeNotVisited(current_node)
+            if(newNodeName is None):
+                # 当前节点被访问完，则进行路径输出，并且回退
+                current_node.visited = True
+                self.getPath(current_node)
+                current_node = self.tree.get_node(current_node.bpointer)
+            newNodeData = NodeData(nodeName=newNodeName,
+                                   neighbors=list(graph.neighbors(newNodeName)),
+                                   nodeDictData=graph.node[newNodeName]['data'])
+            self.tree.create_node(newNodeName,
+                                  node_id,
+                                  parent=father_node.identifier,
+                                  data=newNodeData)
+            node_id += 1
+            print current_node
+
+    def nodeVisitable(self, current_node):
+        if current_node.visitableNode>0:
+            return True
+        else:
+            return False
+
+    def getPath(self, node):
+        """
+        输出从跟节点到该节点的路径
+        :param node:
+        :return:
+        """
+        nodeList = []
+        while(node):
+            nodeList.append(node.bpointer)
+            node = self.tree.get_node(node.bpointer)
+        print "get a path with node:", nodeList
+        return
+
+    def getNodeNotVisited(self, node):
+        """
+        返回node节点未访问的节点
+        若没有未访问的节点，则返回None
+        :param node:
+        :return:
+        """
+        son_list = node.fpointer
+        for son in son_list:
+            if self.tree.get_node(son).visited is True:
+                return son
+        return None
 
     def generate_network_info(self):
         #生成网络图
@@ -164,6 +245,7 @@ class Path_generate(object):
         start_point_id = ""
         end_point_id = ""
         for i in range(len(lines)):
+            #lines[i]['visited'] = 0
             if(lines[i].has_key('viewId') is False):
                 lines[i]['viewId'] = " "
             if(lines[i].has_key('pageId') is False):
@@ -181,6 +263,8 @@ class Path_generate(object):
             except:
                 # print "New Node"
                 G.add_node(current_node_id, data=lines[i])
+
+            # print "current node_id:",current_node_id,"data:",G.node[current_node_id]['data']
 
             # 以出现的次数作为权重，加到边上
             try:
@@ -212,11 +296,14 @@ class Path_generate(object):
         plt.savefig("network_arlong.png")
         # self.generate_path_from_network(G)
         source_node = self.get_biggest_degree_of_network(G)
-        self.print_detail_of_graph(G)
+        nei = G.neighbors(source_node)
         if(source_node):
-            path_result = self.generate_dfs_path_from_graph(G, source_node)
-            if(len(path_result)>0):
-                self.devide_path_by_circle_from_list(path_result)
+            if TEST_DFS:
+                self.arlonDFSgeneratePath(G, source_node)
+            else:
+                path_result = self.generate_dfs_path_from_graph(G, source_node)
+                if(len(path_result)>0):
+                    self.devide_path_by_circle_from_list(path_result)
         else:
             print "初始节点选取失败"
         plt.show()
@@ -418,9 +505,9 @@ if __name__ == '__main__':
     # print r.is_inherit(z, z)
     # networkx_test()
     # generate_network_info()
-    n_list = [1,2,3,4,2, 3,4,5,6,1,4, 2,3,4,5,6,5 ,7,7,8,1,7]
+    # n_list = [1,2,3,4,2, 3,4,5,6,1,4, 2,3,4,5,6,5 ,7,7,8,1,7]
     pg = Path_generate()
-    pg.devide_path_by_circle_from_list(n_list)
+    # pg.devide_path_by_circle_from_list(n_list)
    # exit(3)
 
     pg.generate_network_info_with_weight()
