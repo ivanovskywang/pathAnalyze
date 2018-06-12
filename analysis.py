@@ -43,6 +43,7 @@ class NodeData(object):
         self.neighbors = neighbors
         self.nodeDict = nodeDictData
         self.visited = False
+
         visitableNode = len(self.neighbors)
 
 
@@ -52,6 +53,8 @@ class Path_generate(object):
         self.Graph_for_show = nx.DiGraph()
         self.tree = Tree()
         self.pathVisited = []
+        self.visited_neighbor = set()
+        self.node_id = 0
 
     def arlonDFSgeneratePath(self, graph, rootNodeName):
         """
@@ -59,39 +62,81 @@ class Path_generate(object):
         :param graph:
         :return:
         """
-        node_id = 0
+
         #current_node = rootNode
         rootNeighbors = list(graph.neighbors(rootNodeName))
 
         rootNodeData = NodeData(nodeName=rootNodeName,
                                 neighbors=rootNeighbors,
                                 nodeDictData=graph.node[rootNodeName]['data'])
-        current_node = self.tree.create_node(rootNodeName, node_id, data=rootNodeData)
-        node_id += 1
+        current_node = self.tree.create_node(rootNodeName, self.node_id, data=rootNodeData)
+        self.node_id += 1
         self.pathVisited.append(rootNodeName)
-        while((current_node.tag != rootNodeName) or (self.getNodeNotVisited(current_node) is None)):
-            father_node = current_node
-            newNodeName = self.getNodeNotVisited(current_node)
-            if(newNodeName is None):
-                # 当前节点被访问完，则进行路径输出，并且回退
-                current_node.visited = True
-                self.getPath(current_node)
-                current_node = self.tree.get_node(current_node.bpointer)
-            newNodeData = NodeData(nodeName=newNodeName,
-                                   neighbors=list(graph.neighbors(newNodeName)),
-                                   nodeDictData=graph.node[newNodeName]['data'])
-            self.tree.create_node(newNodeName,
-                                  node_id,
-                                  parent=father_node.identifier,
-                                  data=newNodeData)
-            node_id += 1
+        while((current_node.tag != rootNodeName) or (self.has_neighbor_not_visited(current_node,graph) is True)):
+            print "当前节点：",current_node.tag
+            print self.tree
+            if self.has_child_not_visited(current_node) is False:
+                current_node.data.visited = True
+                current_node = current_node.bpointer
+                continue
+            elif len(current_node.fpointer) is not 0:
+                # 新节点，先把邻居加到树上
+                if(self.add_neighbors_on_tree(current_node)):
+                    # current_node.data.visited = True
+                    current_node = self.getNodeNotVisited(current_node)
+                else:
+                    # 当前节点没有可访问的，则进行路径输出，并且回退
+                    current_node.data.visited = True
+                    self.getPath(current_node)
+                    current_node = self.tree.get_node(current_node.bpointer)
+                    continue
+            else:
+                current_node = self.getNodeNotVisited(current_node)
+
+
             print current_node
 
-    def nodeVisitable(self, current_node):
-        if current_node.visitableNode>0:
+    def add_neighbors_on_tree(self, node):
+        """
+        先判断节点是否加过，没加过就加进去，加过了，就把路径输出
+        :param node:
+        :return:
+        """
+        neighbors_list = list(graph.neighbors(node.data.nodeName))
+        if len(neighbors_list) is not 0:
+            for item in neighbors_list:
+                if item in self.visited_neighbor:
+                    self.getPath(node)
+                else:
+                    self.visited_neighbor.add(item)
+                    itemNeighbors = list(graph.neighbors(item))
+
+                    itemNodeData = NodeData(nodeName=item,
+                                            neighbors=itemNeighbors,
+                                            nodeDictData=graph.node[item]['data'])
+                    new_node = self.tree.create_node(item, self.node_id,
+                                                     parent=node.identifier,
+                                                     data=itemNodeData)
+                    self.node_id += 1
             return True
-        else:
-            return False
+        return False
+
+    def has_neighbor_not_visited(self, node, graph):
+        neighbors_list = list(graph.neighbors(node.data.nodeName))
+        if len(neighbors_list) is not 0:
+            for item in neighbors_list:
+                if item not in self.visited_neighbor:
+                    return True
+        node.data.visited = True
+        return False
+
+    def has_child_not_visited(self, node):
+        child_list = node.fpointer
+        if len(child_list) is not 0:
+            for child in child_list:
+                if child.data.visited is False:
+                    return True
+        return False
 
     def getPath(self, node):
         """
