@@ -4,6 +4,7 @@ import os
 import networkx as nx
 import matplotlib.pyplot as plt
 import io
+import re
 from treelib import Tree, Node
 
 PATH_FILE = "./UIPath_number.txt"
@@ -75,28 +76,27 @@ class Path_generate(object):
         while((current_node.tag != rootNodeName) or (self.has_neighbor_not_visited(current_node,graph) is True)):
             print "当前节点：",current_node.tag
             print self.tree
-            if self.has_child_not_visited(current_node) is False:
-                current_node.data.visited = True
-                current_node = current_node.bpointer
-                continue
-            elif len(current_node.fpointer) is not 0:
-                # 新节点，先把邻居加到树上
-                if(self.add_neighbors_on_tree(current_node)):
-                    # current_node.data.visited = True
+            if len(current_node.fpointer) is not 0:
+                if self.has_child_not_visited(current_node) is False:
+                    current_node.data.visited = True
+                    current_node = current_node.bpointer
+                    #continue
+                else:
+                    current_node = self.getNodeNotVisited(current_node)
+            else:
+                if(self.add_neighbors_on_tree(current_node, graph)):
                     current_node = self.getNodeNotVisited(current_node)
                 else:
-                    # 当前节点没有可访问的，则进行路径输出，并且回退
                     current_node.data.visited = True
                     self.getPath(current_node)
                     current_node = self.tree.get_node(current_node.bpointer)
-                    continue
-            else:
-                current_node = self.getNodeNotVisited(current_node)
+                    #continue
+            # print type(current_node)
+            # if re.search("NoneType", type(current_node)) is not None:
+            #     print "current_node is NoneType"
+            #     exit(10)
 
-
-            print current_node
-
-    def add_neighbors_on_tree(self, node):
+    def add_neighbors_on_tree(self, node, graph):
         """
         先判断节点是否加过，没加过就加进去，加过了，就把路径输出
         :param node:
@@ -160,8 +160,8 @@ class Path_generate(object):
         """
         son_list = node.fpointer
         for son in son_list:
-            if self.tree.get_node(son).visited is True:
-                return son
+            if (self.tree.get_node(son).data.visited is False):
+                return self.tree.get_node(son)
         return None
 
     def generate_network_info(self):
