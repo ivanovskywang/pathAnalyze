@@ -7,7 +7,7 @@ import io
 import re
 from treelib import Tree, Node
 
-PATH_FILE = "./UIPath_number.txt"
+PATH_FILE = "./UIPath_139K.txt"
 GENERATED_PATH = "./generate_path.txt"
 PATH_RESULT_FILE = "./path_analysis_result.txt"
 TEST_DFS = 1
@@ -56,6 +56,19 @@ class Path_generate(object):
         self.pathVisited = []
         self.visited_neighbor = set()
         self.node_id = 0
+        self.path_record = []
+
+    def path_show(self):
+        path_result = []
+        if len(self.path_record) is not 0:
+            for record in self.path_record:
+                one_path = []
+                for node in record:
+                    one_path.append(node.tag)
+                path_result.append(one_path)
+        self.write_result_to_file(path_result)
+        return
+
 
     def arlonDFSgeneratePath(self, graph, rootNodeName):
         """
@@ -72,14 +85,17 @@ class Path_generate(object):
                                 nodeDictData=graph.node[rootNodeName]['data'])
         current_node = self.tree.create_node(rootNodeName, self.node_id, data=rootNodeData)
         self.node_id += 1
+        self.visited_neighbor.add(rootNodeName)
         self.pathVisited.append(rootNodeName)
-        while((current_node.tag != rootNodeName) or (self.has_neighbor_not_visited(current_node,graph) is True)):
+        while((current_node.tag != rootNodeName) or
+              (self.has_neighbor_not_visited(current_node,graph) is True) or
+              (self.has_child_not_visited(current_node) is True)):
             print "当前节点：",current_node.tag
             print self.tree
             if len(current_node.fpointer) is not 0:
                 if self.has_child_not_visited(current_node) is False:
                     current_node.data.visited = True
-                    current_node = current_node.bpointer
+                    current_node = self.tree.get_node(current_node.bpointer)
                     #continue
                 else:
                     current_node = self.getNodeNotVisited(current_node)
@@ -88,13 +104,15 @@ class Path_generate(object):
                     current_node = self.getNodeNotVisited(current_node)
                 else:
                     current_node.data.visited = True
-                    self.getPath(current_node)
+                    # self.getPath(current_node)
                     current_node = self.tree.get_node(current_node.bpointer)
                     #continue
             # print type(current_node)
-            # if re.search("NoneType", type(current_node)) is not None:
-            #     print "current_node is NoneType"
-            #     exit(10)
+            if re.search("NoneType", str(type(current_node))) is not None:
+                print "current_node is NoneType"
+                exit(10)
+            print self.tree
+        print "路径提取结束啦"
 
     def add_neighbors_on_tree(self, node, graph):
         """
@@ -103,6 +121,7 @@ class Path_generate(object):
         :return:
         """
         neighbors_list = list(graph.neighbors(node.data.nodeName))
+        add_flag = 0
         if len(neighbors_list) is not 0:
             for item in neighbors_list:
                 if item in self.visited_neighbor:
@@ -118,6 +137,8 @@ class Path_generate(object):
                                                      parent=node.identifier,
                                                      data=itemNodeData)
                     self.node_id += 1
+                    add_flag += 1
+        if add_flag > 0:
             return True
         return False
 
@@ -134,7 +155,7 @@ class Path_generate(object):
         child_list = node.fpointer
         if len(child_list) is not 0:
             for child in child_list:
-                if child.data.visited is False:
+                if self.tree.get_node(child).data.visited is False:
                     return True
         return False
 
@@ -146,9 +167,11 @@ class Path_generate(object):
         """
         nodeList = []
         while(node):
-            nodeList.append(node.bpointer)
+            nodeList.append(node)
             node = self.tree.get_node(node.bpointer)
+        nodeList.reverse()
         print "get a path with node:", nodeList
+        self.path_record.append(nodeList)
         return
 
     def getNodeNotVisited(self, node):
@@ -297,8 +320,8 @@ class Path_generate(object):
                 lines[i]['pageId'] = " "
             if(lines[i].has_key('event') is False):
                 lines[i]['event'] = " "
-            # current_node_id = lines[i]['pageId'] + "#" + lines[i]['event'] + "#" + lines[i]['viewId']
-            current_node_id = lines[i]['pageId']
+            current_node_id = lines[i]['pageId'] + "#" + lines[i]['event'] + "#" + lines[i]['viewId']
+            #current_node_id = lines[i]['pageId']
             graph_for_show_id = lines[i]['pageId']
             if(len(start_point_id) == 0):
                 start_point_id = current_node_id
@@ -339,9 +362,11 @@ class Path_generate(object):
                 font_size=20,
                 node_size=50)
         plt.savefig("network_arlong.png")
+        plt.show()
         # self.generate_path_from_network(G)
         source_node = self.get_biggest_degree_of_network(G)
-        nei = G.neighbors(source_node)
+        # nei = G.neighbors(source_node)
+        return [source_node, G]
         if(source_node):
             if TEST_DFS:
                 self.arlonDFSgeneratePath(G, source_node)
@@ -351,7 +376,7 @@ class Path_generate(object):
                     self.devide_path_by_circle_from_list(path_result)
         else:
             print "初始节点选取失败"
-        plt.show()
+        #
 
     def generate_path_from_network(self, G):
         """
@@ -555,5 +580,7 @@ if __name__ == '__main__':
     # pg.devide_path_by_circle_from_list(n_list)
    # exit(3)
 
-    pg.generate_network_info_with_weight()
+    node_graph = pg.generate_network_info_with_weight()
+    pg.arlonDFSgeneratePath(node_graph[1], node_graph[0])
+    pg.path_show()
     # arlong_generate_path_info_sim()
