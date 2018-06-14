@@ -7,6 +7,10 @@ import io
 import re
 from treelib import Tree, Node
 
+import sys
+reload(sys)
+sys.setdefaultencoding('utf-8')
+
 PATH_FILE = "./UIPath_139K.txt"
 GENERATED_PATH = "./generate_path.txt"
 PATH_RESULT_FILE = "./path_analysis_result.txt"
@@ -19,7 +23,7 @@ class RawData(object):
 
     def to_dict(self, string):
         #字符串转字典
-        return json.loads(string.decode("utf-8"))
+        return json.loads(string.decode('utf-8'))
 
     def load_data(self, filename):
         #从原始文件加载数据
@@ -279,7 +283,9 @@ class Path_generate(object):
         print path_result
         res_f = open(PATH_RESULT_FILE,'w')
         for path in path_result:
-            res_f.write(str(path))
+            print type(str(path))
+            type("".join(path))
+            res_f.write(u"->".join(path).decode().encode('utf-8'))
             res_f.write('\n')
         if res_f:
             res_f.close()
@@ -320,8 +326,8 @@ class Path_generate(object):
                 lines[i]['pageId'] = " "
             if(lines[i].has_key('event') is False):
                 lines[i]['event'] = " "
-            current_node_id = lines[i]['pageId'] + "#" + lines[i]['event'] + "#" + lines[i]['viewId']
-            #current_node_id = lines[i]['pageId']
+            #current_node_id = lines[i]['pageId'] + "#" + lines[i]['event'] + "#" + lines[i]['viewId']
+            current_node_id = lines[i]['pageId']
             graph_for_show_id = lines[i]['pageId']
             if(len(start_point_id) == 0):
                 start_point_id = current_node_id
