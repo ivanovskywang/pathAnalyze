@@ -1,4 +1,9 @@
 # -*- coding: utf-8 -*-
+"""
+数据写本地文件，路径/sdcard/TrackRecordLib/com.qzone/UIPath.txt
+50条才写一次，直接就是一个json字符串了，python直接读就可以了
+每50条一个json字符串
+"""
 import json
 import os
 import networkx as nx
@@ -87,7 +92,7 @@ class Path_generate(object):
         rootNodeData = NodeData(nodeName=rootNodeName,
                                 neighbors=rootNeighbors,
                                 nodeDictData=graph.node[rootNodeName]['data'])
-        current_node = self.tree.create_node(rootNodeName, self.node_id, data=rootNodeData)
+        current_node = self.tree.create_node(rootNodeName, rootNodeName, data=rootNodeData)
         self.node_id += 1
         self.visited_neighbor.add(rootNodeName)
         self.pathVisited.append(rootNodeName)
@@ -129,7 +134,7 @@ class Path_generate(object):
         if len(neighbors_list) is not 0:
             for item in neighbors_list:
                 if item in self.visited_neighbor:
-                    self.getPath(node)
+                    self.getPath(node, item)
                 else:
                     self.visited_neighbor.add(item)
                     itemNeighbors = list(graph.neighbors(item))
@@ -137,7 +142,7 @@ class Path_generate(object):
                     itemNodeData = NodeData(nodeName=item,
                                             neighbors=itemNeighbors,
                                             nodeDictData=graph.node[item]['data'])
-                    new_node = self.tree.create_node(item, self.node_id,
+                    new_node = self.tree.create_node(item, item,
                                                      parent=node.identifier,
                                                      data=itemNodeData)
                     self.node_id += 1
@@ -163,19 +168,23 @@ class Path_generate(object):
                     return True
         return False
 
-    def getPath(self, node):
+    def getPath(self, node, lastnode_id):
         """
         输出从跟节点到该节点的路径
         :param node:
         :return:
         """
         nodeList = []
-        while(node):
+        while node:
             nodeList.append(node)
             node = self.tree.get_node(node.bpointer)
         nodeList.reverse()
+        last_node = self.tree.get_node(lastnode_id)
+        if last_node:
+            nodeList.append(last_node)
         print "get a path with node:", nodeList
-        self.path_record.append(nodeList)
+        if len(nodeList) > 2:
+            self.path_record.append(nodeList)
         return
 
     def getNodeNotVisited(self, node):
@@ -283,8 +292,8 @@ class Path_generate(object):
         print path_result
         res_f = open(PATH_RESULT_FILE,'w')
         for path in path_result:
-            print type(str(path))
-            type("".join(path))
+            # print type(str(path))
+            # type("".join(path))
             res_f.write(u"->".join(path).decode().encode('utf-8'))
             res_f.write('\n')
         if res_f:
@@ -326,8 +335,8 @@ class Path_generate(object):
                 lines[i]['pageId'] = " "
             if(lines[i].has_key('event') is False):
                 lines[i]['event'] = " "
-            #current_node_id = lines[i]['pageId'] + "#" + lines[i]['event'] + "#" + lines[i]['viewId']
-            current_node_id = lines[i]['pageId']
+            current_node_id = lines[i]['pageId'] + "#" + lines[i]['event'] + "#" + lines[i]['viewId']
+            # current_node_id = lines[i]['pageId']
             graph_for_show_id = lines[i]['pageId']
             if(len(start_point_id) == 0):
                 start_point_id = current_node_id
